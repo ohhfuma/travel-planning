@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f766e">
+<title>Travel Planning</title>
+<style>
+  :root {
+    --bg: #f6f8f8; --card: #ffffff; --text: #16302f; --muted: #5d7473;
+    --accent: #0f766e; --accent-soft: #d9f0ed; --border: #dbe5e4; --warn: #b45309;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1717; --card: #162424; --text: #e6f0ef; --muted: #98b0ae;
+      --accent: #2dd4bf; --accent-soft: #17403c; --border: #284342; --warn: #fbbf24;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         background: var(--bg); color: var(--text); line-height: 1.45; }
+  header { padding: 18px 16px 8px; max-width: 760px; margin: 0 auto; }
+  header h1 { margin: 0; font-size: 1.5rem; }
+  header p { margin: 4px 0 0; color: var(--muted); font-size: .95rem; }
+  nav { display: flex; gap: 8px; padding: 8px 16px; max-width: 760px; margin: 0 auto; position: sticky; top: 0; background: var(--bg); z-index: 5; }
+  nav button { flex: 1; padding: 12px; border: 1px solid var(--border); background: var(--card); color: var(--text);
+               border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; }
+  nav button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  @media (prefers-color-scheme: dark) { nav button.active { color: #062a26; } }
+  main { max-width: 760px; margin: 0 auto; padding: 8px 16px 40px; }
+  section { display: none; }
+  section.active { display: block; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 16px; }
+  .chip { padding: 8px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--card);
+          color: var(--text); font-size: .9rem; cursor: pointer; }
+  .chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  @media (prefers-color-scheme: dark) { .chip.active { color: #062a26; } }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+  .card h3 { margin: 0 0 2px; font-size: 1.05rem; }
+  .card .country { color: var(--muted); font-size: .9rem; margin-bottom: 6px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .tag { background: var(--accent-soft); color: var(--text); font-size: .78rem; padding: 3px 9px; border-radius: 999px; }
+  .btn { display: inline-block; margin-top: 10px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--accent);
+         background: transparent; color: var(--accent); font-weight: 600; cursor: pointer; font-size: .95rem; }
+  .btn.primary { background: var(--accent); color: #fff; width: 100%; padding: 14px; font-size: 1.05rem; }
+  @media (prefers-color-scheme: dark) { .btn.primary { color: #062a26; } }
+  label { display: block; font-weight: 600; margin: 14px 0 6px; font-size: .95rem; }
+  input, select, textarea { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border);
+         background: var(--card); color: var(--text); font-size: 1rem; font-family: inherit; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .checks { display: flex; flex-wrap: wrap; gap: 8px; }
+  .checks label { display: flex; align-items: center; gap: 6px; margin: 0; font-weight: 500; padding: 8px 12px;
+         border: 1px solid var(--border); border-radius: 999px; background: var(--card); }
+  .checks input { width: auto; }
+  .hint { color: var(--muted); font-size: .85rem; margin-top: 4px; }
+  .warn { color: var(--warn); font-weight: 600; margin: 8px 0; }
+  .bar { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed var(--border); }
+  .day h4 { margin: 0 0 8px; }
+  .slot { margin: 6px 0; }
+  .slot b { color: var(--accent); }
+  #result { margin-top: 20px; }
+  .error { color: #dc2626; font-weight: 600; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>✈️ Travel Planning</h1>
+  <p>Scopri dove andare e costruisci il tuo viaggio.</p>
+</header>
+
+<nav>
+  <button id="tab-mete" class="active" onclick="showTab('mete')">Mete per mese</button>
+  <button id="tab-pianifica" onclick="showTab('pianifica')">Pianifica viaggio</button>
+</nav>
+
+<main>
+  <!-- SEZIONE 1: METE PER MESE -->
+  <section id="mete" class="active">
+    <div class="chips" id="monthChips"></div>
+    <div id="destList"></div>
+  </section>
+
+  <!-- SEZIONE 2: PIANIFICA -->
+  <section id="pianifica">
+    <form id="planForm" onsubmit="return generatePlan(event)">
+      <label for="dest">Destinazione</label>
+      <input id="dest" list="destOptions" placeholder="Es. Lisbona (lascia vuoto per un suggerimento)">
+      <datalist id="destOptions"></datalist>
+
+      <div class="row">
+        <div>
+          <label for="start">Partenza</label>
+          <input id="start" type="date" required>
+        </div>
+        <div>
+          <label for="end">Ritorno</label>
+          <input id="end" type="date" required>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="budget">Budget totale (€)</label>
+          <input id="budget" type="number" min="0" step="10" inputmode="numeric" placeholder="1500" required>
+        </div>
+        <div>
+          <label for="people">Viaggiatori</label>
+          <input id="people" type="number" min="1" max="20" value="2" inputmode="numeric" required>
+        </div>
+      </div>
+
+      <label>Interessi</label>
+      <div class="checks" id="interests">
+        <label><input type="checkbox" value="cultura" checked> 🏛️ Cultura</label>
+        <label><input type="checkbox" value="gastronomia"> 🍝 Gastronomia</label>
+        <label><input type="checkbox" value="natura"> 🌿 Natura</label>
+        <label><input type="checkbox" value="relax"> 🧘 Relax</label>
+        <label><input type="checkbox" value="avventura"> 🧗 Avventura</label>
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="pace">Ritmo</label>
+          <select id="pace">
+            <option value="relaxed">Tranquillo</option>
+            <option value="normal" selected>Equilibrato</option>
+            <option value="intense">Intenso</option>
+          </select>
+        </div>
+        <div>
+          <label for="transport">Spostamenti</label>
+          <select id="transport">
+            <option value="aereo">Aereo</option>
+            <option value="treno">Treno</option>
+            <option value="auto">Auto</option>
+          </select>
+        </div>
+      </div>
+
+      <label for="notes">Note e vincoli (facoltativo)</label>
+      <textarea id="notes" rows="3" placeholder="Es. viaggio con bambini, niente voli all'alba, dieta vegetariana..."></textarea>
+
+      <div id="formError" class="error"></div>
+      <button class="btn primary" type="submit">Crea programma</button>
+    </form>
+
+    <div id="result"></div>
+  </section>
+</main>
+
+<script>
+/* ---------- DATI: METE PER MESE ---------- */
+const MONTHS = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
+
+const DESTS = {
+  0: [
+    {n:"Dolomiti", c:"Italia", d:"Neve sicura e piste per tutti i livelli.", t:["Neve","Natura"], b:"€€"},
+    {n:"Tenerife", c:"Spagna", d:"Clima primaverile quando in Italia fa freddo.", t:["Mare","Relax"], b:"€€"},
+    {n:"Marrakech", c:"Marocco", d:"Giornate miti, ideali per medina e deserto.", t:["Cultura","Avventura"], b:"€"},
+    {n:"Thailandia", c:"Thailandia", d:"Stagione secca, perfetta per isole e templi.", t:["Mare","Cultura"], b:"€€"},
+    {n:"Dubai", c:"Emirati Arabi", d:"Temperature piacevoli e tanti eventi.", t:["Città","Relax"], b:"€€€"}
+  ],
+  1: [
+    {n:"Venezia", c:"Italia", d:"Atmosfera unica durante il Carnevale.", t:["Cultura","Eventi"], b:"€€"},
+    {n:"Lanzarote", c:"Spagna", d:"Paesaggi vulcanici e clima mite.", t:["Natura","Relax"], b:"€€"},
+    {n:"Sri Lanka (costa sud)", c:"Sri Lanka", d:"Spiagge, tè e safari con tempo buono.", t:["Mare","Natura"], b:"€€"},
+    {n:"Luxor e Assuan", c:"Egitto", d:"Meno caldo, ideale per i siti archeologici.", t:["Cultura"], b:"€"},
+    {n:"Alta Badia", c:"Italia", d:"Sci e cucina di montagna.", t:["Neve","Gastronomia"], b:"€€€"}
+  ],
+  2: [
+    {n:"Siviglia", c:"Spagna", d:"Fioriture e temperature gradevoli.", t:["Cultura","Gastronomia"], b:"€€"},
+    {n:"Madeira", c:"Portogallo", d:"Isola fiorita, ottima per camminare.", t:["Natura"], b:"€€"},
+    {n:"Marocco del sud", c:"Marocco", d:"Clima ideale per deserto e kasbah.", t:["Avventura","Cultura"], b:"€"},
+    {n:"Cipro", c:"Cipro", d:"Primi caldi, poca folla.", t:["Mare","Cultura"], b:"€€"},
+    {n:"Giappone (Kyushu)", c:"Giappone", d:"Primi ciliegi in fiore al sud.", t:["Cultura","Natura"], b:"€€€"}
+  ],
+  3: [
+    {n:"Giappone", c:"Giappone", d:"Stagione dei ciliegi (hanami).", t:["Cultura","Natura"], b:"€€€"},
+    {n:"Keukenhof e Amsterdam", c:"Paesi Bassi", d:"Campi di tulipani in piena fioritura.", t:["Natura","Città"], b:"€€€"},
+    {n:"Lisbona", c:"Portogallo", d:"Luce splendida e clima mite.", t:["Cultura","Gastronomia"], b:"€€"},
+    {n:"Sicilia", c:"Italia", d:"Fioriture, mare ancora fresco, nessuna folla.", t:["Cultura","Gastronomia"], b:"€€"},
+    {n:"Atene", c:"Grecia", d:"Siti archeologici con temperature perfette.", t:["Cultura"], b:"€€"}
+  ],
+  4: [
+    {n:"Dubrovnik e Dalmazia", c:"Croazia", d:"Mare invitante e prezzi ancora contenuti.", t:["Mare","Cultura"], b:"€€"},
+    {n:"Provenza", c:"Francia", d:"Colline verdi e mercati.", t:["Natura","Gastronomia"], b:"€€"},
+    {n:"Puglia", c:"Italia", d:"Ideale per borghi e trulli.", t:["Cultura","Gastronomia"], b:"€€"},
+    {n:"Cicladi", c:"Grecia", d:"Isole tranquille prima dell'alta stagione.", t:["Mare","Relax"], b:"€€"},
+    {n:"Porto e Douro", c:"Portogallo", d:"Vigneti verdi e città vivace.", t:["Gastronomia","Natura"], b:"€€"}
+  ],
+  5: [
+    {n:"Santorini e Naxos", c:"Grecia", d:"Mare caldo e tramonti scenografici.", t:["Mare","Relax"], b:"€€€"},
+    {n:"Islanda", c:"Islanda", d:"Sole di mezzanotte e strade aperte.", t:["Natura","Avventura"], b:"€€€"},
+    {n:"Norvegia dei fiordi", c:"Norvegia", d:"Giornate lunghissime, cascate al massimo.", t:["Natura"], b:"€€€"},
+    {n:"Sardegna", c:"Italia", d:"Mare splendido prima della folla di agosto.", t:["Mare"], b:"€€"},
+    {n:"Bretagna", c:"Francia", d:"Coste selvagge e clima gradevole.", t:["Natura","Gastronomia"], b:"€€"}
+  ],
+  6: [
+    {n:"Dolomiti", c:"Italia", d:"Trekking e rifugi con clima fresco.", t:["Natura","Avventura"], b:"€€"},
+    {n:"Isole croate (Hvar, Vis)", c:"Croazia", d:"Navigazione e calette.", t:["Mare"], b:"€€"},
+    {n:"Scozia (Highlands)", c:"Regno Unito", d:"Paesaggi epici e giornate lunghe.", t:["Natura","Cultura"], b:"€€€"},
+    {n:"Lofoten", c:"Norvegia", d:"Sole di mezzanotte e escursioni.", t:["Natura","Avventura"], b:"€€€"},
+    {n:"Slovenia", c:"Slovenia", d:"Laghi e montagne senza assalti turistici.", t:["Natura","Relax"], b:"€"}
+  ],
+  7: [
+    {n:"Dolomiti", c:"Italia", d:"Fuga dal caldo, sentieri e rifugi.", t:["Natura","Avventura"], b:"€€"},
+    {n:"Sardegna (Nord-Est)", c:"Italia", d:"Mare cristallino, prenota con anticipo.", t:["Mare"], b:"€€€"},
+    {n:"Scandinavia", c:"Danimarca/Svezia", d:"Estate mite e città vivibili.", t:["Città","Natura"], b:"€€€"},
+    {n:"Isole Eolie", c:"Italia", d:"Mare, vulcani e vita in barca.", t:["Mare","Avventura"], b:"€€"},
+    {n:"Estonia", c:"Estonia", d:"Mare, boschi e Tallinn medievale.", t:["Cultura","Natura"], b:"€"}
+  ],
+  8: [
+    {n:"Puglia", c:"Italia", d:"Mare ancora caldo, meno folla.", t:["Mare","Gastronomia"], b:"€€"},
+    {n:"Peloponneso", c:"Grecia", d:"Siti antichi e spiagge quasi vuote.", t:["Cultura","Mare"], b:"€€"},
+    {n:"Portogallo (Algarve)", c:"Portogallo", d:"Surf e falesie con clima ideale.", t:["Mare","Avventura"], b:"€€"},
+    {n:"Slovenia e Carso", c:"Slovenia", d:"Vendemmia e colori d'autunno in arrivo.", t:["Gastronomia","Natura"], b:"€"},
+    {n:"Sicilia", c:"Italia", d:"Mare tiepido e mercati stagionali.", t:["Mare","Gastronomia"], b:"€€"}
+  ],
+  9: [
+    {n:"Giappone", c:"Giappone", d:"Foliage autunnale e clima gradevole.", t:["Cultura","Natura"], b:"€€€"},
+    {n:"Toscana", c:"Italia", d:"Vendemmia, tartufo e colline dorate.", t:["Gastronomia","Cultura"], b:"€€"},
+    {n:"Marocco", c:"Marocco", d:"Fine del grande caldo, ottimo per tutto.", t:["Cultura","Avventura"], b:"€"},
+    {n:"Lisbona e Sintra", c:"Portogallo", d:"Ancora sole, meno turisti.", t:["Cultura","Gastronomia"], b:"€€"},
+    {n:"Cappadocia", c:"Turchia", d:"Mongolfiere e valli senza caldo estremo.", t:["Avventura","Cultura"], b:"€€"}
+  ],
+  10: [
+    {n:"Egitto (Mar Rosso)", c:"Egitto", d:"Mare caldo e snorkeling a buon prezzo.", t:["Mare","Relax"], b:"€"},
+    {n:"Madeira", c:"Portogallo", d:"Clima mite e escursioni sulle levadas.", t:["Natura"], b:"€€"},
+    {n:"Dubai e Abu Dhabi", c:"Emirati Arabi", d:"Stagione ideale per esterni.", t:["Città","Relax"], b:"€€€"},
+    {n:"Capo Verde", c:"Capo Verde", d:"Sole e vento, ottimo per sport acquatici.", t:["Mare","Avventura"], b:"€€"},
+    {n:"Valencia", c:"Spagna", d:"Città mite e vivace, ottima paella.", t:["Gastronomia","Città"], b:"€€"}
+  ],
+  11: [
+    {n:"Mercatini in Alto Adige", c:"Italia", d:"Atmosfera natalizia e specialità locali.", t:["Gastronomia","Eventi"], b:"€€"},
+    {n:"Vienna e Salisburgo", c:"Austria", d:"Mercatini, musica e pasticcerie.", t:["Cultura","Eventi"], b:"€€€"},
+    {n:"Lapponia", c:"Finlandia", d:"Aurore boreali, husky e neve.", t:["Avventura","Neve"], b:"€€€"},
+    {n:"Thailandia", c:"Thailandia", d:"Stagione secca e fine anno tropicale.", t:["Mare","Cultura"], b:"€€"},
+    {n:"Gran Canaria", c:"Spagna", d:"Inverno mite per scappare dal freddo.", t:["Mare","Relax"], b:"€€"}
+  ]
+};
+
+/* ---------- DATI: ATTIVITÀ PER INTERESSE ---------- */
+const POOL = {
+  cultura: [
+    "Visita al centro storico e ai monumenti principali",
+    "Museo o sito storico più importante",
+    "Quartiere storico a piedi, con tour guidato",
+    "Mercato locale e architettura del posto",
+    "Visita a un edificio simbolo e ai suoi dintorni"
+  ],
+  natura: [
+    "Passeggiata panoramica su un sentiero facile",
+    "Giornata in un parco o riserva naturale",
+    "Punto panoramico al tramonto",
+    "Escursione in giornata nei dintorni",
+    "Picnic con vista in un luogo all'aperto"
+  ],
+  gastronomia: [
+    "Colazione in un locale tipico",
+    "Mercato locale e pranzo con piatti del posto",
+    "Cena in una trattoria consigliata",
+    "Degustazione o corso di cucina",
+    "Giro tra street food e specialità locali"
+  ],
+  relax: [
+    "Mattinata lenta: caffè e passeggiata senza fretta",
+    "Spa, spiaggia o giardino",
+    "Tempo libero e shopping tranquillo",
+    "Aperitivo al tramonto",
+    "Pomeriggio di riposo e lettura"
+  ],
+  avventura: [
+    "Attività outdoor (trekking, bici o kayak)",
+    "Escursione più impegnativa con guida",
+    "Attività sportiva o adrenalinica",
+    "Esplora zone fuori dai percorsi turistici",
+    "Giro in bici o scooter fuori città"
+  ]
+};
+
+/* ---------- NAVIGAZIONE ---------- */
+function showTab(id) {
+  document.querySelectorAll("section").forEach(s => s.classList.toggle("active", s.id === id));
+  document.getElementById("tab-mete").classList.toggle("active", id === "mete");
+  document.getElementById("tab-pianifica").classList.toggle("active", id === "pianifica");
+  window.scrollTo(0, 0);
+}
+
+/* ---------- SEZIONE METE ---------- */
+let currentMonth = new Date().getMonth();
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+function renderMonths() {
+  const box = document.getElementById("monthChips");
+  box.innerHTML = MONTHS.map((m, i) =>
+    `<button type="button" class="chip ${i === currentMonth ? "active" : ""}" onclick="selectMonth(${i})">${m}</button>`
+  ).join("");
+}
+
+function selectMonth(i) {
+  currentMonth = i;
+  renderMonths();
+  renderDests();
+}
+
+function renderDests() {
+  const list = DESTS[currentMonth];
+  document.getElementById("destList").innerHTML = list.map((d, idx) => `
+    <div class="card">
+      <h3>${esc(d.n)}</h3>
+      <div class="country">${esc(d.c)} · budget ${esc(d.b)}</div>
+      <div>${esc(d.d)}</div>
+      <div class="tags">${d.t.map(t => `<span class="tag">${esc(t)}</span>`).join("")}</div>
+      <button type="button" class="btn" onclick="planThis(${currentMonth}, ${idx})">Pianifica questo viaggio</button>
+    </div>
+  `).join("");
+}
+
+function planThis(m, idx) {
+  const d = DESTS[m][idx];
+  document.getElementById("dest").value = d.n;
+  // suggerisce date nel mese scelto (prossima occorrenza)
+  const now = new Date();
+  let year = now.getFullYear();
+  if (m < now.getMonth()) year += 1;
+  const s = new Date(year, m, 10);
+  const e = new Date(year, m, 16);
+  document.getElementById("start").value = toISO(s);
+  document.getElementById("end").value = toISO(e);
+  showTab("pianifica");
+}
+
+/* ---------- SEZIONE PIANIFICA ---------- */
+function toISO(d) {
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return d.getFullYear() + "-" + mm + "-" + dd;
+}
+
+function parseISO(s) {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function fmt(d) {
+  return d.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "long" });
+}
+
+function eur(n) {
+  return Math.round(n).toLocaleString("it-IT") + " €";
+}
+
+function fillDatalist() {
+  const names = new Set();
+  Object.values(DESTS).forEach(arr => arr.forEach(d => names.add(d.n)));
+  document.getElementById("destOptions").innerHTML = [...names].sort().map(n => `<option value="${esc(n)}">`).join("");
+}
+
+let lastPlanText = "";
+
+function generatePlan(ev) {
+  ev.preventDefault();
+  const err = document.getElementById("formError");
+  err.textContent = "";
+
+  const startVal = document.getElementById("start").value;
+  const endVal = document.getElementById("end").value;
+  const budget = parseFloat(document.getElementById("budget").value);
+  const people = parseInt(document.getElementById("people").value, 10);
+  const pace = document.getElementById("pace").value;
+  const transport = document.getElementById("transport").value;
+  const notes = document.getElementById("notes").value.trim();
+  let dest = document.getElementById("dest").value.trim();
+
+  const interests = [...document.querySelectorAll("#interests input:checked")].map(i => i.value);
+  if (interests.length === 0) interests.push("cultura");
+
+  if (!startVal || !endVal) { err.textContent = "Inserisci le date di partenza e ritorno."; return false; }
+  const start = parseISO(startVal), end = parseISO(endVal);
+  if (end < start) { err.textContent = "La data di ritorno deve essere dopo la partenza."; return false; }
+  if (!(budget > 0)) { err.textContent = "Inserisci un budget maggiore di zero."; return false; }
+  if (!(people >= 1)) { err.textContent = "Inserisci almeno un viaggiatore."; return false; }
+
+  const days = Math.round((end - start) / 86400000) + 1;
+  if (days > 30) { err.textContent = "Per ora il programma gestisce viaggi fino a 30 giorni."; return false; }
+
+  // Se manca la destinazione, suggerisce una meta del mese di partenza
+  let suggested = false;
+  if (!dest) {
+    const list = DESTS[start.getMonth()];
+    dest = list[0].n;
+    suggested = true;
+  }
+
+  // Budget
+  const perPerson = budget / people;
+  const perPersonDay = perPerson / days;
+  const split = [
+    ["Alloggio", 0.40],
+    ["Trasporti (" + transport + ")", 0.25],
+    ["Cibo", 0.20],
+    ["Attività", 0.10],
+    ["Imprevisti", 0.05]
+  ];
+
+  let level = "";
+  if (perPersonDay < 50) level = "Budget molto stretto: considera ostelli, cucina propria e mete economiche.";
+  else if (perPersonDay < 90) level = "Budget contenuto: possibile con scelte attente su alloggio e pasti.";
+  else if (perPersonDay < 160) level = "Budget medio: buon equilibrio tra comfort e costi.";
+  else level = "Budget ampio: spazio per esperienze extra e più comfort.";
+
+  // Programma giorno per giorno
+  const slotNames = pace === "relaxed" ? ["Mattina", "Sera"]
+                  : pace === "normal"  ? ["Mattina", "Pomeriggio", "Sera"]
+                  : ["Mattina", "Pomeriggio", "Sera"];
+  const counters = {};
+  interests.forEach(i => counters[i] = 0);
+  let rot = 0;
+
+  function nextActivity() {
+    const k = interests[rot % interests.length];
+    rot++;
+    const arr = POOL[k];
+    const text = arr[counters[k] % arr.length];
+    counters[k]++;
+    return text;
+  }
+
+  let html = "";
+  let text = "";
+
+  const title = "Viaggio a " + dest;
+  html += `<div class="card"><h3>${esc(title)}</h3>
+    <div class="country">${esc(fmt(start))} → ${esc(fmt(end))} · ${days} giorni · ${people} ${people === 1 ? "persona" : "persone"}</div>
+    ${suggested ? `<div class="hint">Non avevi scelto una meta: ti suggerisco ${esc(dest)}, ideale nel mese di partenza.</div>` : ""}
+    <div style="margin-top:8px"><b>Budget:</b> ${eur(budget)} totali · ${eur(perPerson)} a persona · circa ${eur(perPersonDay)} a persona al giorno</div>
+    <div class="warn">${esc(level)}</div>
+  </div>`;
+  text += title + "\n" + fmt(start) + " → " + fmt(end) + " (" + days + " giorni, " + people + " pers.)\n";
+  text += "Budget: " + eur(budget) + " totali\n\n";
+
+  html += `<div class="card"><h3>Ripartizione consigliata</h3>` +
+    split.map(([n, p]) => `<div class="bar"><span>${esc(n)}</span><span>${eur(budget * p)}</span></div>`).join("") +
+    `</div>`;
+  text += "RIPARTIZIONE BUDGET\n" + split.map(([n, p]) => "- " + n + ": " + eur(budget * p)).join("\n") + "\n\n";
+
+  for (let i = 0; i < days; i++) {
+    const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    let slots = [];
+    if (i === 0) {
+      slots.push(["Arrivo", "Arrivo a " + dest + " con " + transport + ", sistemazione e primo giro di orientamento"]);
+      if (slotNames.length > 2) slots.push(["Sera", nextActivity()]);
+    } else if (i === days - 1 && days > 1) {
+      slots.push(["Mattina", nextActivity()]);
+      slots.push(["Partenza", "Ultimi acquisti, check-out e rientro con " + transport]);
+    } else {
+      slotNames.forEach(s => slots.push([s, nextActivity()]));
+    }
+
+    html += `<div class="card day"><h4>Giorno ${i + 1} · ${esc(fmt(date))}</h4>` +
+      slots.map(([s, a]) => `<div class="slot"><b>${esc(s)}:</b> ${esc(a)}</div>`).join("") +
+      `</div>`;
+    text += "GIORNO " + (i + 1) + " - " + fmt(date) + "\n" + slots.map(([s, a]) => "  " + s + ": " + a).join("\n") + "\n\n";
+  }
+
+  if (notes) {
+    html += `<div class="card"><h3>Le tue note</h3><div>${esc(notes)}</div></div>`;
+    text += "NOTE: " + notes + "\n";
+  }
+
+  html += `<button type="button" class="btn" onclick="copyPlan()">Copia programma</button>
+           <div id="copyMsg" class="hint"></div>`;
+
+  lastPlanText = text;
+  document.getElementById("result").innerHTML = html;
+  document.getElementById("result").scrollIntoView({ behavior: "smooth" });
+
+  try { localStorage.setItem("lastPlan", JSON.stringify({ html, text })); } catch (e) {}
+  return false;
+}
+
+function copyPlan() {
+  const msg = document.getElementById("copyMsg");
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(lastPlanText).then(
+      () => msg.textContent = "Programma copiato.",
+      () => msg.textContent = "Copia non riuscita: seleziona il testo a mano."
+    );
+  } else {
+    msg.textContent = "Copia non supportata su questo browser.";
+  }
+}
+
+/* ---------- AVVIO ---------- */
+renderMonths();
+renderDests();
+fillDatalist();
+
+try {
+  const saved = JSON.parse(localStorage.getItem("lastPlan") || "null");
+  if (saved && saved.html) {
+    document.getElementById("result").innerHTML = saved.html;
+    lastPlanText = saved.text || "";
+  }
+} catch (e) {}
+</script>
+</body>
+</html>
